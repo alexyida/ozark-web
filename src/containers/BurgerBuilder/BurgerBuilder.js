@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 
 import Aux from "../../hoc/Aux";
+import Burger from "../../components/Burger/Burger";
 
 const BurgerBuilder = () => {
   return (
     <Aux>
-      <div>Burger</div>
+      <Burger />
       <div>Build Controls</div>
     </Aux>
   );
