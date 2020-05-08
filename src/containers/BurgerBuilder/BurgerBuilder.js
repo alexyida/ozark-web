@@ -1,19 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { KIND as ButtonKind } from "baseui/button";
-import {
-  Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalButton,
-  SIZE,
-  ROLE
-} from "baseui/modal";
+import { Modal, ModalBody, ModalFooter, ModalButton } from "baseui/modal";
+import { Spinner } from "baseui/spinner";
 
 import BuildControls from "../../components/Burger/BuildControls/BuildControls";
 import Burger from "../../components/Burger/Burger";
 import OrderSummary from "../../components/Burger/OrderSummary/OrderSummary";
-import { checkPropTypes } from "prop-types";
+import WithErrorHandler from "../../hoc/WithErrorHandler/WithErrorHandler";
+import axios from "../../axios-orders";
 
 const INGREDIENT_PRICES = {
   salad: 0.5,
@@ -23,16 +17,24 @@ const INGREDIENT_PRICES = {
 };
 
 const BurgerBuilder = () => {
-  const [ingredients, setIngredients] = useState({
-    salad: 0,
-    bacon: 0,
-    cheese: 0,
-    meat: 0
-  });
+  const [ingredients, setIngredients] = useState(null);
 
   const [totalPrice, setTotalPrice] = useState(4);
   const [purchaseable, setPurchaseable] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    axios
+      .get("ingredients.json")
+      .then(response => {
+        setIngredients(response.data);
+      })
+      .catch(error => {
+        setError(true);
+      });
+  }, []);
 
   const updatePurchaseState = igs => {
     const sum = Object.keys(igs)
@@ -92,8 +94,51 @@ const BurgerBuilder = () => {
   };
 
   const purchaseContinueHandler = () => {
-    alert("You continue!");
+    // alert("You continue!");
+    setLoading(true);
+    const order = {
+      ingredients,
+      price: totalPrice,
+      customer: {
+        name: "Yida Wang",
+        address: {
+          street: "105 CV",
+          zipCode: "L3R 8A6",
+          country: "Canada"
+        },
+        email: "yidaalex.wang@gmail.com"
+      },
+      deliveryMethod: "fastest"
+    };
+    axios
+      .post("/orders.json", order)
+      .then(response => {
+        setLoading(false);
+        setPurchasing(false);
+      })
+      .catch(error => {
+        setLoading(false);
+        setPurchasing(false);
+      });
   };
+
+  let burger = error ? <p>Ingredients can't be loaded</p> : <Spinner />;
+
+  if (ingredients) {
+    burger = (
+      <React.Fragment>
+        <Burger ingredients={ingredients} />
+        <BuildControls
+          ingredientAdded={addIngredientHandler}
+          ingredientRemoved={removeIngredientHandler}
+          disabled={disabledInfo}
+          purchaseable={purchaseable}
+          ordered={purchaseHandler}
+          price={totalPrice}
+        />
+      </React.Fragment>
+    );
+  }
 
   return (
     <React.Fragment>
@@ -111,20 +156,14 @@ const BurgerBuilder = () => {
           >
             CANCEL
           </ModalButton>
-          <ModalButton onClick={purchaseContinueHandler}>CONTINUE</ModalButton>
+          <ModalButton onClick={purchaseContinueHandler} isLoading={loading}>
+            CONTINUE
+          </ModalButton>
         </ModalFooter>
       </Modal>
-      <Burger ingredients={ingredients} />
-      <BuildControls
-        ingredientAdded={addIngredientHandler}
-        ingredientRemoved={removeIngredientHandler}
-        disabled={disabledInfo}
-        purchaseable={purchaseable}
-        ordered={purchaseHandler}
-        price={totalPrice}
-      />
+      {burger}
     </React.Fragment>
   );
 };
 
-export default BurgerBuilder;
+export default WithErrorHandler(BurgerBuilder, axios);
