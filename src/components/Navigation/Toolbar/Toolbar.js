@@ -9,24 +9,28 @@ import {
 import { Layer } from "baseui/layer";
 import { useStyletron } from "baseui";
 import { Unstable_AppNavBar as AppNavBar } from "baseui/app-nav-bar";
+import { NavLink } from "react-router-dom";
 
 import Logo from "../../Logo/Logo";
 
 function renderItem(item) {
-  return item.label;
+  return (
+    <NavLink to={item.link || ""} exact>
+      {item.label}
+    </NavLink>
+  );
 }
 
 const MAIN_NAV = [
   {
-    active: true,
     icon: Icon,
-    item: { label: "Burger Builder" },
+    item: { label: "Burger Builder", link: "/" },
     mapItemToNode: renderItem,
     mapItemToString: renderItem
   },
   {
     icon: Icon,
-    item: { label: "Checkout" },
+    item: { label: "Checkout", link: "/orders" },
     mapItemToNode: renderItem,
     mapItemToString: renderItem
   },
@@ -114,8 +118,24 @@ const USER_NAV = [
   }
 ];
 
+function isActive(arr, item, activeItem) {
+  let active = false;
+  for (let i = 0; i < arr.length; i++) {
+    const elm = arr[i];
+    if (elm === item) {
+      if (item === activeItem) return true;
+      return isActive((item && item.nav) || [], activeItem, activeItem);
+    } else if (elm.nav) {
+      active = isActive(elm.nav || [], item, activeItem);
+    }
+  }
+  return active;
+}
+
 const Toolbar = props => {
   const [css] = useStyletron();
+
+  const [activeNavItem, setActiveNavItem] = React.useState();
 
   const containerStyles = css({
     boxSizing: "border-box",
@@ -131,8 +151,14 @@ const Toolbar = props => {
         <AppNavBar
           appDisplayName={<Logo />}
           mainNav={MAIN_NAV}
+          isNavItemActive={({ item }) => {
+            return (
+              item === activeNavItem || isActive(MAIN_NAV, item, activeNavItem)
+            );
+          }}
           onNavItemSelect={({ item }) => {
-            console.log(item);
+            if (item === activeNavItem) return;
+            setActiveNavItem(item);
           }}
           userNav={USER_NAV}
           username="Yida Wang"

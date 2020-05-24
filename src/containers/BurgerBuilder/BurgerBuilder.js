@@ -6,7 +6,7 @@ import { Spinner } from "baseui/spinner";
 import BuildControls from "../../components/Burger/BuildControls/BuildControls";
 import Burger from "../../components/Burger/Burger";
 import OrderSummary from "../../components/Burger/OrderSummary/OrderSummary";
-import WithErrorHandler from "../../hoc/WithErrorHandler/WithErrorHandler";
+import withErrorHandler from "../../hoc/withErrorHandler/withErrorHandler";
 import axios from "../../axios-orders";
 
 const INGREDIENT_PRICES = {
@@ -16,7 +16,7 @@ const INGREDIENT_PRICES = {
   meat: 0.7
 };
 
-const BurgerBuilder = () => {
+const BurgerBuilder = props => {
   const [ingredients, setIngredients] = useState(null);
 
   const [totalPrice, setTotalPrice] = useState(4);
@@ -94,32 +94,13 @@ const BurgerBuilder = () => {
   };
 
   const purchaseContinueHandler = () => {
-    // alert("You continue!");
-    setLoading(true);
-    const order = {
-      ingredients,
-      price: totalPrice,
-      customer: {
-        name: "Yida Wang",
-        address: {
-          street: "105 CV",
-          zipCode: "L3R 8A6",
-          country: "Canada"
-        },
-        email: "yidaalex.wang@gmail.com"
-      },
-      deliveryMethod: "fastest"
-    };
-    axios
-      .post("/orders.json", order)
-      .then(response => {
-        setLoading(false);
-        setPurchasing(false);
-      })
-      .catch(error => {
-        setLoading(false);
-        setPurchasing(false);
-      });
+    const queryParams = [];
+    for (let i in ingredients) {
+      queryParams.push(encodeURI(i) + "=" + encodeURIComponent(ingredients[i]));
+    }
+    queryParams.push("price=" + totalPrice);
+    const queryString = queryParams.join("&");
+    props.history.push({ pathname: "/checkout", search: "?" + queryString });
   };
 
   let burger = error ? <p>Ingredients can't be loaded</p> : <Spinner />;
@@ -166,4 +147,4 @@ const BurgerBuilder = () => {
   );
 };
 
-export default WithErrorHandler(BurgerBuilder, axios);
+export default withErrorHandler(BurgerBuilder, axios);

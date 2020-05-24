@@ -7,9 +7,12 @@ import classes from "./Burger.module.css";
 const Burger = props => {
   let transformedIngredients = Object.keys(props.ingredients)
     .map(igKey => {
-      return [...Array(props.ingredients[igKey])].map((_, i) => {
-        return <BurgerIngredient key={igKey + i} type={igKey} />;
-      });
+      if (igKey !== "price") {
+        return [...Array(props.ingredients[igKey])].map((_, i) => {
+          return <BurgerIngredient key={igKey + i} type={igKey} />;
+        });
+      }
+      return null;
     })
     .reduce((arr, el) => {
       return arr.concat(el);
