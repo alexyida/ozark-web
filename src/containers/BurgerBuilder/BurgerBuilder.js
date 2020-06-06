@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { connect } from "react-redux";
+
 import { KIND as ButtonKind } from "baseui/button";
 import { Modal, ModalBody, ModalFooter, ModalButton } from "baseui/modal";
 import { Spinner } from "baseui/spinner";
@@ -8,33 +10,12 @@ import Burger from "../../components/Burger/Burger";
 import OrderSummary from "../../components/Burger/OrderSummary/OrderSummary";
 import withErrorHandler from "../../hoc/withErrorHandler/withErrorHandler";
 import axios from "../../axios-orders";
-
-const INGREDIENT_PRICES = {
-  salad: 0.5,
-  bacon: 0.4,
-  cheese: 1.3,
-  meat: 0.7
-};
+import * as actionTypes from "../../store/actions";
 
 const BurgerBuilder = props => {
-  const [ingredients, setIngredients] = useState(null);
-
-  const [totalPrice, setTotalPrice] = useState(4);
-  const [purchaseable, setPurchaseable] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-
-  useEffect(() => {
-    axios
-      .get("ingredients.json")
-      .then(response => {
-        setIngredients(response.data);
-      })
-      .catch(error => {
-        setError(true);
-      });
-  }, []);
 
   const updatePurchaseState = igs => {
     const sum = Object.keys(igs)
@@ -44,42 +25,11 @@ const BurgerBuilder = props => {
       .reduce((sum, el) => {
         return sum + el;
       }, 0);
-    setPurchaseable(sum > 0);
-  };
-
-  const addIngredientHandler = type => {
-    const oldCount = ingredients[type];
-    const updatedCount = oldCount + 1;
-    const updatedIngredients = {
-      ...ingredients
-    };
-    updatedIngredients[type] = updatedCount;
-    setIngredients(updatedIngredients);
-    const priceAddition = INGREDIENT_PRICES[type];
-    const newPrice = totalPrice + priceAddition;
-    setTotalPrice(newPrice);
-    updatePurchaseState(updatedIngredients);
-  };
-
-  const removeIngredientHandler = type => {
-    const oldCount = ingredients[type];
-    if (oldCount <= 0) {
-      return;
-    }
-    const updatedCount = oldCount - 1;
-    const updatedIngredients = {
-      ...ingredients
-    };
-    updatedIngredients[type] = updatedCount;
-    setIngredients(updatedIngredients);
-    const priceDeduction = INGREDIENT_PRICES[type];
-    const newPrice = totalPrice - priceDeduction;
-    setTotalPrice(newPrice);
-    updatePurchaseState(updatedIngredients);
+    return sum > 0;
   };
 
   const disabledInfo = {
-    ...ingredients
+    ...props.ings
   };
   for (let key in disabledInfo) {
     disabledInfo[key] = disabledInfo[key] <= 0;
@@ -94,28 +44,28 @@ const BurgerBuilder = props => {
   };
 
   const purchaseContinueHandler = () => {
-    const queryParams = [];
-    for (let i in ingredients) {
-      queryParams.push(encodeURI(i) + "=" + encodeURIComponent(ingredients[i]));
-    }
-    queryParams.push("price=" + totalPrice);
-    const queryString = queryParams.join("&");
-    props.history.push({ pathname: "/checkout", search: "?" + queryString });
+    // const queryParams = [];
+    // for (let i in props.ings) {
+    //   queryParams.push(encodeURI(i) + "=" + encodeURIComponent(props.ings[i]));
+    // }
+    // queryParams.push("price=" + totalPrice);
+    // const queryString = queryParams.join("&");
+    props.history.push("/checkout");
   };
 
   let burger = error ? <p>Ingredients can't be loaded</p> : <Spinner />;
 
-  if (ingredients) {
+  if (props.ings) {
     burger = (
       <React.Fragment>
-        <Burger ingredients={ingredients} />
+        <Burger ingredients={props.ings} />
         <BuildControls
-          ingredientAdded={addIngredientHandler}
-          ingredientRemoved={removeIngredientHandler}
+          ingredientAdded={props.onIngredientAdded}
+          ingredientRemoved={props.onIngredientRemoved}
           disabled={disabledInfo}
-          purchaseable={purchaseable}
+          purchaseable={updatePurchaseState(props.ings)}
           ordered={purchaseHandler}
-          price={totalPrice}
+          price={props.price}
         />
       </React.Fragment>
     );
@@ -126,8 +76,8 @@ const BurgerBuilder = props => {
       <Modal onClose={purchaseCancelHandler} closeable isOpen={purchasing}>
         <ModalBody>
           <OrderSummary
-            ingredients={ingredients}
-            price={totalPrice.toFixed(2)}
+            ingredients={props.ings}
+            price={props.price.toFixed(2)}
           />
         </ModalBody>
         <ModalFooter>
@@ -147,4 +97,29 @@ const BurgerBuilder = props => {
   );
 };
 
-export default withErrorHandler(BurgerBuilder, axios);
+const mapStateToProps = state => {
+  return {
+    ings: state.ingredients,
+    price: state.totalPrice
+  };
+};
+
+const mapDispatchToProps = dispatch => {
+  return {
+    onIngredientAdded: ingName =>
+      dispatch({
+        type: actionTypes.ADD_INGREDIENT,
+        ingredientName: ingName
+      }),
+    onIngredientRemoved: ingName =>
+      dispatch({
+        type: actionTypes.REMOVE_INGREDIENT,
+        ingredientName: ingName
+      })
+  };
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(withErrorHandler(BurgerBuilder, axios));
